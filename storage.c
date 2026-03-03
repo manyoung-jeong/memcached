@@ -934,7 +934,11 @@ static void storage_compact_readback(void *storage, logger *l,
         uint32_t page_id, uint64_t page_version, uint32_t page_offset, uint64_t read_size) {
     uint64_t offset = 0;
     unsigned int rescues = 0;
+    // rescues which required a memory realloc (informational)
+    unsigned int rescues_realloc = 0;
     unsigned int lost = 0;
+    // failed rescues because of OOM vs disk space
+    unsigned int lost_oom = 0;
     unsigned int skipped = 0;
     unsigned int rescue_cold = 0;
     unsigned int rescue_old = 0;
@@ -994,7 +998,7 @@ static void storage_compact_readback(void *storage, logger *l,
                         do_update = true;
                         break;
                     } else {
-                        usleep(1000);
+                        usleep(10000);
                     }
                 }
 
@@ -1028,8 +1032,10 @@ static void storage_compact_readback(void *storage, logger *l,
                             item_replace(hdr_it, new_it, hv, ITEM_get_cas(hdr_it));
                             do_item_remove(new_it); // release our reference.
                             rescued = true;
+                            rescues_realloc++;
                         } else {
                             lost++;
+                            lost_oom++;
                         }
                     }
 
@@ -1063,7 +1069,7 @@ static void storage_compact_readback(void *storage, logger *l,
     stats.extstore_compact_resc_old += rescue_old;
     STATS_UNLOCK();
     LOGGER_LOG(l, LOG_SYSEVENTS, LOGGER_COMPACT_READ_END,
-            NULL, page_id, offset, rescues, lost, skipped);
+            NULL, page_id, offset, rescues, rescues_realloc, lost, lost_oom, skipped);
 }
 
 // wrap lock is held while waiting for this callback, preventing caller thread

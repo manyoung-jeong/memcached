@@ -851,16 +851,25 @@ static void process_debugitem_command(conn *c, mcp_parser_t *pr) {
             out_string(c, "MISS");
             return;
         }
+        c->debug_item_reffed = it;
     } else if (strncmp(subcmd, "unref", len) == 0) {
-        // double unlink. debugger must have already ref'ed it or this
-        // underflows.
-        item *it = item_get(key, klen, c->thread, DONT_UPDATE);
-        if (it == NULL) {
-            out_string(c, "MISS");
-            return;
+        if (klen == 6 && strncmp(key, "reffed", klen) == 0) {
+            // Item memory held in slot so we can test replacing reffed items
+            // without leaking.
+            item *reffed = c->debug_item_reffed;
+            do_item_remove(reffed);
+            c->debug_item_reffed = NULL;
+        } else {
+            // double unlink. debugger must have already ref'ed it or this
+            // underflows.
+            item *it = item_get(key, klen, c->thread, DONT_UPDATE);
+            if (it == NULL) {
+                out_string(c, "MISS");
+                return;
+            }
+            do_item_remove(it);
+            do_item_remove(it);
         }
-        do_item_remove(it);
-        do_item_remove(it);
     } else {
         out_string(c, "ERROR");
         return;
