@@ -12,7 +12,7 @@ my $server = new_memcached('-m 60 -o slab_reassign,slab_automove,lru_crawler,lru
 my $sock = $server->sock;
 
 my $value = "B"x11000;
-my $keycount = 5000;
+my $keycount = 5750;
 
 my $res;
 for (1 .. $keycount) {
